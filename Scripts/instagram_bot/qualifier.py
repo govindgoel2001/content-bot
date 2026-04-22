@@ -27,7 +27,9 @@ from database import (
 
 
 def _fetch_fresh_views(cl, shortcode: str) -> tuple[int, int, int]:
-    """Return (views, likes, comments) for a post by shortcode using instagrapi."""
+    """Return (views, likes, comments) for a post. Skipped if no client provided."""
+    if cl is None:
+        return -1, -1, -1
     try:
         media = cl.media_info_by_shortcode(shortcode)
         views = media.view_count or 0
