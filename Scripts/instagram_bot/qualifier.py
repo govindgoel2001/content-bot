@@ -16,8 +16,6 @@ import random
 from datetime import datetime, timezone
 from typing import Any
 
-import instaloader
-
 from config import MIN_VIEWS, TOP_N
 from database import (
     init_db,
@@ -28,14 +26,12 @@ from database import (
 )
 
 
-def _fetch_fresh_views(
-    L: instaloader.Instaloader, shortcode: str
-) -> tuple[int, int, int]:
-    """Return (views, likes, comments) for a post by shortcode."""
+def _fetch_fresh_views(cl, shortcode: str) -> tuple[int, int, int]:
+    """Return (views, likes, comments) for a post by shortcode using instagrapi."""
     try:
-        post = instaloader.Post.from_shortcode(L.context, shortcode)
-        views = post.video_view_count if post.is_video else 0
-        return views, post.likes, post.comments
+        media = cl.media_info_by_shortcode(shortcode)
+        views = media.view_count or 0
+        return views, media.like_count or 0, media.comment_count or 0
     except Exception as e:
         print(f"  [re-check] Could not refresh {shortcode}: {e}")
         return -1, -1, -1
@@ -47,7 +43,7 @@ def _shortcode_from_url(url: str) -> str:
 
 def qualify_and_rank(
     new_posts: list[dict[str, Any]],
-    instaloader_ctx: instaloader.Instaloader,
+    ig_client,
 ) -> list[dict[str, Any]]:
     init_db()
 
@@ -64,7 +60,7 @@ def qualify_and_rank(
 
     for p in stale:
         sc = _shortcode_from_url(p["url"])
-        views, likes, comments = _fetch_fresh_views(instaloader_ctx, sc)
+        views, likes, comments = _fetch_fresh_views(ig_client, sc)
         if views >= 0:
             old_views = p["views_latest"]
             update_views(p["post_id"], views, likes, comments)

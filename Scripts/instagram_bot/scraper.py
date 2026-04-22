@@ -1,83 +1,78 @@
-"""Stage 1 — Scrape: uses Instaloader (free, no API key) to pull recent posts.
+"""Stage 1 — Scrape: uses instagrapi (mobile API) to pull recent posts.
 
 Strategy: only fetch posts from the LAST 24 HOURS per competitor account.
 The database layer handles dedup and late-bloomer re-checking separately.
-
-Requires a throwaway Instagram account for reliable rate limits.
-Set IG_USERNAME / IG_PASSWORD in .env, or leave blank for anonymous mode
-(anonymous mode is heavily rate-limited by Instagram).
 """
 
-import os
+import json
 import time
 import random
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 from typing import Any
 
-import instaloader
+from instagrapi import Client
+from instagrapi.exceptions import LoginRequired, UserNotFound, ClientError
 
 from config import IG_USERNAME, IG_PASSWORD, SCRAPE_WINDOW_HOURS
+
+SESSION_PATH = Path(__file__).parent / "output" / "ig_session.json"
 
 
 class InstagramScraper:
     def __init__(self):
-        self.L = instaloader.Instaloader(
-            download_videos=False,
-            download_video_thumbnails=False,
-            download_geotags=False,
-            download_comments=False,
-            save_metadata=False,
-            quiet=True,
-        )
+        self.cl = Client()
+        self.cl.delay_range = [2, 5]  # polite delays between requests
         self._login()
+        # Expose as .L for qualifier.py compatibility (unused with instagrapi but keeps interface intact)
+        self.L = None
 
     def _login(self):
-        if not IG_USERNAME:
-            print("[Scraper] No IG credentials set — running anonymous (may be rate-limited)")
-            return
-        # Try saved session file first (created via: instaloader --login <username>)
-        try:
-            self.L.load_session_from_file(IG_USERNAME)
-            print(f"[Scraper] Loaded saved session for @{IG_USERNAME}")
-            return
-        except FileNotFoundError:
-            pass
-        except Exception as e:
-            print(f"[Scraper] Session file load failed ({e}) — trying password login")
-        # Fall back to password login
-        if IG_PASSWORD:
+        SESSION_PATH.parent.mkdir(exist_ok=True)
+        # Try saved session first
+        if SESSION_PATH.exists():
             try:
-                self.L.login(IG_USERNAME, IG_PASSWORD)
-                self.L.save_session_to_file()
-                print(f"[Scraper] Logged in as @{IG_USERNAME} (session saved)")
+                self.cl.load_settings(SESSION_PATH)
+                self.cl.login(IG_USERNAME, IG_PASSWORD)
+                print(f"[Scraper] Loaded saved session for @{IG_USERNAME}")
+                self._save_session()
+                return
             except Exception as e:
-                print(f"[Scraper] Login failed ({e}) — falling back to anonymous mode")
-        else:
-            print("[Scraper] No password set — running anonymous (may be rate-limited)")
+                print(f"[Scraper] Saved session invalid ({e}) — logging in fresh")
+
+        # Fresh login
+        try:
+            self.cl.login(IG_USERNAME, IG_PASSWORD)
+            self._save_session()
+            print(f"[Scraper] Logged in as @{IG_USERNAME}")
+        except Exception as e:
+            raise RuntimeError(f"Instagram login failed: {e}")
+
+    def _save_session(self):
+        self.cl.dump_settings(SESSION_PATH)
 
     def scrape_account(self, handle: str, since_hours: int = SCRAPE_WINDOW_HOURS) -> list[dict[str, Any]]:
-        """Return posts from `handle` published in the last `since_hours` hours."""
         cutoff = datetime.now(timezone.utc) - timedelta(hours=since_hours)
         posts = []
 
         try:
-            profile = instaloader.Profile.from_username(self.L.context, handle)
-        except instaloader.exceptions.ProfileNotExistsException as e:
-            print(f"[Scraper] @{handle} not found ({type(e).__name__}: {e}) — skipping")
+            user_id = self.cl.user_id_from_username(handle)
+            medias = self.cl.user_medias(user_id, amount=20)
+        except UserNotFound:
+            print(f"[Scraper] @{handle} not found — skipping")
             return []
         except Exception as e:
-            print(f"[Scraper] Error loading @{handle} ({type(e).__name__}: {e})")
+            print(f"[Scraper] Error loading @{handle}: {type(e).__name__}: {e}")
             return []
 
-        for post in profile.get_posts():
-            post_time = post.date_utc.replace(tzinfo=timezone.utc)
+        for media in medias:
+            post_time = media.taken_at.replace(tzinfo=timezone.utc) if media.taken_at.tzinfo is None else media.taken_at.astimezone(timezone.utc)
             if post_time < cutoff:
-                break  # posts are chronological newest-first; stop early
+                continue  # instagrapi doesn't guarantee order; check all 20
 
-            posts.append(_normalize_instaloader_post(post, handle))
+            posts.append(_normalize_media(media, handle))
 
         print(f"[Scraper] @{handle} → {len(posts)} new post(s) in last {since_hours}h")
-        # polite delay between accounts (1–3s)
         time.sleep(random.uniform(1, 3))
         return posts
 
@@ -89,21 +84,28 @@ class InstagramScraper:
         return all_posts
 
 
-def _normalize_instaloader_post(post, handle: str) -> dict[str, Any]:
-    is_video = post.is_video
+def _normalize_media(media, handle: str) -> dict[str, Any]:
+    is_video = media.media_type == 2  # 1=photo, 2=video, 8=album
+    shortcode = media.code or str(media.pk)
+    caption = media.caption_text or ""
+    hashtags = " ".join(f"#{tag}" for tag in (media.hashtags or []))
+    posted_at = media.taken_at
+    if posted_at.tzinfo is None:
+        posted_at = posted_at.replace(tzinfo=timezone.utc)
+
     return {
-        "post_id": str(post.mediaid),
-        "shortcode": post.shortcode,
+        "post_id": str(media.pk),
+        "shortcode": shortcode,
         "username": handle,
-        "url": f"https://www.instagram.com/p/{post.shortcode}/",
-        "thumbnail": post.url,
-        "caption": (post.caption or "")[:2000],
-        "hashtags": " ".join(f"#{t}" for t in post.caption_hashtags),
-        "views": post.video_view_count if is_video else 0,
-        "likes": post.likes,
-        "comments": post.comments,
+        "url": f"https://www.instagram.com/p/{shortcode}/",
+        "thumbnail": str(media.thumbnail_url or ""),
+        "caption": caption[:2000],
+        "hashtags": hashtags,
+        "views": media.view_count or 0,
+        "likes": media.like_count or 0,
+        "comments": media.comment_count or 0,
         "is_video": is_video,
-        "is_reel": post.is_video,   # Instaloader doesn't distinguish Reels vs regular video; both count
-        "posted_at": post.date_utc.replace(tzinfo=timezone.utc).isoformat(),
-        "typename": post.typename,  # "GraphVideo", "GraphImage", "GraphSidecar"
+        "is_reel": is_video,
+        "posted_at": posted_at.isoformat(),
+        "typename": "GraphVideo" if is_video else "GraphImage",
     }

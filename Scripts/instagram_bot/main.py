@@ -51,7 +51,7 @@ def run_pipeline():
     # ── Stage 2: Qualify, re-check late bloomers, deduplicate ─────────────────
     _log("Stage 2: Qualifying + late-bloomer re-check...")
     from qualifier import qualify_and_rank, enrich_db_row
-    top_db_rows = qualify_and_rank(new_posts, scraper.L)
+    top_db_rows = qualify_and_rank(new_posts, scraper.cl)
 
     if not top_db_rows:
         _log("No unanalyzed posts with ≥10,000 views today. Skipping analysis.")
