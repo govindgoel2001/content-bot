@@ -1,0 +1,40 @@
+name: Daily Instagram Content Bot
+
+on:
+  schedule:
+    - cron: '0 6 * * *'  # 10:00 PM PT (UTC-8)
+  workflow_dispatch:      # manual trigger from GitHub UI
+
+permissions:
+  contents: write
+
+jobs:
+  run-bot:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: pip install -r Scripts/instagram_bot/requirements.txt
+
+      - name: Run bot
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          APIFY_API_KEY: ${{ secrets.APIFY_API_KEY }}
+        run: cd Scripts/instagram_bot && python main.py
+
+      - name: Commit output
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -f Scripts/instagram_bot/output/
+          git diff --staged --quiet || git commit -m "chore: bot run $(date -u +'%Y-%m-%d')"
+          git push

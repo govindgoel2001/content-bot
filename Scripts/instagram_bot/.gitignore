@@ -2,5 +2,5 @@
 __pycache__/
 *.pyc
 .env
-output/
 run.sh
+output/ig_session.json
