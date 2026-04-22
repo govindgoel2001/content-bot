@@ -1,0 +1,6 @@
+.venv/
+__pycache__/
+*.pyc
+.env
+run.sh
+output/ig_session.json
