@@ -62,11 +62,11 @@ class InstagramScraper:
 
         try:
             profile = instaloader.Profile.from_username(self.L.context, handle)
-        except instaloader.exceptions.ProfileNotExistsException:
-            print(f"[Scraper] @{handle} not found — skipping")
+        except instaloader.exceptions.ProfileNotExistsException as e:
+            print(f"[Scraper] @{handle} not found ({type(e).__name__}: {e}) — skipping")
             return []
         except Exception as e:
-            print(f"[Scraper] Error loading @{handle}: {e}")
+            print(f"[Scraper] Error loading @{handle} ({type(e).__name__}: {e})")
             return []
 
         for post in profile.get_posts():
