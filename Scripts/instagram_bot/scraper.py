@@ -32,14 +32,28 @@ class InstagramScraper:
         self._login()
 
     def _login(self):
-        if IG_USERNAME and IG_PASSWORD:
+        if not IG_USERNAME:
+            print("[Scraper] No IG credentials set — running anonymous (may be rate-limited)")
+            return
+        # Try saved session file first (created via: instaloader --login <username>)
+        try:
+            self.L.load_session_from_file(IG_USERNAME)
+            print(f"[Scraper] Loaded saved session for @{IG_USERNAME}")
+            return
+        except FileNotFoundError:
+            pass
+        except Exception as e:
+            print(f"[Scraper] Session file load failed ({e}) — trying password login")
+        # Fall back to password login
+        if IG_PASSWORD:
             try:
                 self.L.login(IG_USERNAME, IG_PASSWORD)
-                print(f"[Scraper] Logged in as @{IG_USERNAME}")
+                self.L.save_session_to_file()
+                print(f"[Scraper] Logged in as @{IG_USERNAME} (session saved)")
             except Exception as e:
                 print(f"[Scraper] Login failed ({e}) — falling back to anonymous mode")
         else:
-            print("[Scraper] No IG credentials set — running anonymous (may be rate-limited)")
+            print("[Scraper] No password set — running anonymous (may be rate-limited)")
 
     def scrape_account(self, handle: str, since_hours: int = SCRAPE_WINDOW_HOURS) -> list[dict[str, Any]]:
         """Return posts from `handle` published in the last `since_hours` hours."""
