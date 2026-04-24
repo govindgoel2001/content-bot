@@ -25,3 +25,12 @@
 [2026-04-23 07:47:44] No unanalyzed posts with ≥10,000 views today. Skipping analysis.
 [2026-04-23 07:47:44] (All qualifying posts may have already been analyzed, or none hit the threshold yet.)
 [2026-04-23 07:47:44] ============================================================
+[2026-04-24 07:59:05] ============================================================
+[2026-04-24 07:59:05] Pipeline started
+[2026-04-24 07:59:05] Competitors (3): ['cooper.simson', 'justyn.ai', 'raycfu']
+[2026-04-24 07:59:05] Stage 1: Scraping Instagram (last 24h only)...
+[2026-04-24 08:00:33] Stage 1 complete: 1 new post(s) fetched
+[2026-04-24 08:00:33] Stage 2: Qualifying + late-bloomer re-check...
+[2026-04-24 08:00:36] No unanalyzed posts with ≥10,000 views today. Skipping analysis.
+[2026-04-24 08:00:36] (All qualifying posts may have already been analyzed, or none hit the threshold yet.)
+[2026-04-24 08:00:36] ============================================================
