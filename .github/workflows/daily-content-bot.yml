@@ -27,8 +27,10 @@ jobs:
 
       - name: Run research pipeline
         env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-          APIFY_API_KEY: ${{ secrets.APIFY_API_KEY }}
+          ANTHROPIC_API_KEY:    ${{ secrets.ANTHROPIC_API_KEY }}
+          APIFY_API_KEY:        ${{ secrets.APIFY_API_KEY }}
+          NOTION_API_KEY:       ${{ secrets.NOTION_API_KEY }}
+          NOTION_WINNERS_DB_ID: ${{ secrets.NOTION_WINNERS_DB_ID }}
         run: cd Scripts/instagram_bot && python run_research.py
 
       - name: Commit output

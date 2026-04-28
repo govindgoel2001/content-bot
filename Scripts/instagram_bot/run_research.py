@@ -22,9 +22,13 @@ from typing import Any
 import anthropic
 import requests
 
+from notion_winners import push_winners
+
 # ── Config ────────────────────────────────────────────────────────────────────
 APIFY_API_KEY     = os.environ["APIFY_API_KEY"]
 ANTHROPIC_API_KEY = os.environ["ANTHROPIC_API_KEY"]
+NOTION_API_KEY    = os.environ.get("NOTION_API_KEY", "")
+NOTION_WINNERS_DB = os.environ.get("NOTION_WINNERS_DB_ID", "")
 
 ACTOR_ID   = "apify~instagram-scraper"
 APIFY_BASE = "https://api.apify.com/v2"
@@ -439,6 +443,13 @@ def main() -> None:
     write_md(analyzed, baselines, skipped)
     total_csv = write_csv(analyzed)
 
+    notion_urls = []
+    if analyzed and NOTION_API_KEY and NOTION_WINNERS_DB:
+        log("Pushing winners to Notion…")
+        notion_urls = push_winners(analyzed, TODAY)
+    elif analyzed:
+        log("Skipping Notion push — NOTION_API_KEY or NOTION_WINNERS_DB_ID not set")
+
     prune_state(state)
     save_state(state)
 
@@ -446,7 +457,7 @@ def main() -> None:
     print(
         f"\n{len(analyzed)} new winners ({viral_n} viral, threshold 8x) | "
         f"scanned: {len(baselines)}, skipped low-volume: {len(skipped)} | "
-        f"csv total rows: {total_csv}"
+        f"csv total rows: {total_csv} | notion pages: {len(notion_urls)}"
     )
 
 
