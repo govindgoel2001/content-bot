@@ -8,8 +8,14 @@ Outputs written to output/:
   YYYY-MM-DD.json         today's run data
   YYYY-MM-DD.md           human-readable summary
   winners.csv             all-time winners (appended)
+
+Flags:
+  --since YYYY-MM-DD   restrict winner window to this date → today; also
+                        lowers MIN_REELS_FOR_BASELINE to 3 so short windows
+                        still produce baselines (e.g. run_research.py --since 2026-04-23)
 """
 
+import argparse
 import csv
 import json
 import os
@@ -44,7 +50,7 @@ NOW_ISO          = _now.isoformat()
 
 OUTLIER_THRESHOLD      = 2.5
 VIRAL_THRESHOLD        = 8.0
-MIN_REELS_FOR_BASELINE = 10
+MIN_REELS_FOR_BASELINE = 10   # lowered to 3 automatically when --since is used
 SCRAPE_DAYS            = 30
 WINNER_WINDOW_DAYS     = 14
 
@@ -409,6 +415,21 @@ def prune_state(state: dict) -> None:
 
 # ── Main ──────────────────────────────────────────────────────────────────────
 def main() -> None:
+    global MIN_REELS_FOR_BASELINE, WINNER_WINDOW_DAYS, SCRAPE_DAYS
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--since", metavar="YYYY-MM-DD",
+                        help="surface winners posted on or after this date")
+    args = parser.parse_args()
+
+    if args.since:
+        since = datetime.strptime(args.since, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+        window = (_now - since).days + 1
+        WINNER_WINDOW_DAYS     = window
+        SCRAPE_DAYS            = window
+        MIN_REELS_FOR_BASELINE = 3
+        log(f"--since {args.since}: window={window}d, min_reels_baseline=3")
+
     log("=" * 60)
     log(f"IG research pipeline — {TODAY}")
 
@@ -444,11 +465,11 @@ def main() -> None:
     total_csv = write_csv(analyzed)
 
     notion_urls = []
-    if analyzed and NOTION_API_KEY and NOTION_WINNERS_DB:
+    if analyzed and NOTION_API_KEY:
         log("Pushing winners to Notion…")
         notion_urls = push_winners(analyzed, TODAY)
     elif analyzed:
-        log("Skipping Notion push — NOTION_API_KEY or NOTION_WINNERS_DB_ID not set")
+        log("Skipping Notion push — NOTION_API_KEY not set")
 
     prune_state(state)
     save_state(state)

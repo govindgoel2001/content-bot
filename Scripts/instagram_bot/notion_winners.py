@@ -14,7 +14,9 @@ import os
 import requests
 
 NOTION_API_KEY    = os.environ.get("NOTION_API_KEY", "")
-NOTION_WINNERS_DB = os.environ.get("NOTION_WINNERS_DB_ID", "")
+# DB ID extracted from the shared Notion URL; override via NOTION_WINNERS_DB_ID
+_DEFAULT_DB       = "46a0a4d267674a73bb3573e124bd822d"
+NOTION_WINNERS_DB = os.environ.get("NOTION_WINNERS_DB_ID", _DEFAULT_DB)
 NOTION_VERSION    = "2022-06-28"
 BASE_URL          = "https://api.notion.com/v1"
 
