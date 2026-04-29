@@ -1,0 +1,45 @@
+{
+  "generated_at": "2026-04-29T06:12:57.896427+00:00",
+  "apify_status": "FAILED: HTTP 403: Host not in allowlist",
+  "handles_scanned": 7,
+  "handles_skipped_low_volume": [
+    "artem.novitckii",
+    "jens.heitmann",
+    "zaid.gpt",
+    "cooper.simson",
+    "raycfu",
+    "justyn.ai",
+    "noevarner.ai"
+  ],
+  "baselines": {
+    "artem.novitckii": {
+      "avg_views": 0,
+      "reel_count": 0
+    },
+    "jens.heitmann": {
+      "avg_views": 0,
+      "reel_count": 0
+    },
+    "zaid.gpt": {
+      "avg_views": 0,
+      "reel_count": 0
+    },
+    "cooper.simson": {
+      "avg_views": 0,
+      "reel_count": 2
+    },
+    "raycfu": {
+      "avg_views": 0,
+      "reel_count": 1
+    },
+    "justyn.ai": {
+      "avg_views": 0,
+      "reel_count": 1
+    },
+    "noevarner.ai": {
+      "avg_views": 0,
+      "reel_count": 0
+    }
+  },
+  "winners": []
+}
