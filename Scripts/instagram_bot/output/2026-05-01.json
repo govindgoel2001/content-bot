@@ -1,0 +1,16 @@
+{
+  "generated_at": "2026-05-01T00:00:00.000000+00:00",
+  "apify_status": "FAILED: HTTP 403 | Host not in allowlist",
+  "handles_scanned": 0,
+  "handles_skipped_low_volume": [
+    "artem.novitckii",
+    "jens.heitmann",
+    "zaid.gpt",
+    "cooper.simson",
+    "raycfu",
+    "justyn.ai",
+    "noevarner.ai"
+  ],
+  "baselines": {},
+  "winners": []
+}
